@@ -1,0 +1,45 @@
+#PRCP data
+
+#FullJoin
+QSriprcp = full_join(QSprcp,riprcp)
+QSriRSprcp = full_join(QSriprcp,RSprcp)
+
+#Write CSV
+write.csv(allwsprcpMOY, 'allwsprcpMOY.csv', row.names = FALSE)
+
+#Week of Year Column
+QSprcp$WOY = strftime(QSprcp$DOY, format = "%V")
+allwsprcp$WOY = as.numeric(allwsprcp$WOY)
+
+#Month of Year Column
+allwsprcp$MOY = strftime(allwsprcp$WOY, format = "%m")
+allwsprcp$MOY = as.numeric(allwsprcp$MOY)
+
+#Run a pipeline to group by WOY
+allwsprcpWOY = na.omit(allwsprcp) %>%
+  group_by(WOY,Site) %>%
+  summarize(prcp.mm.week = mean(prcp..mm.day.))
+
+#Run a pipeline to group by MOY
+allwsprcpMOY = na.omit(allwsprcp) %>%
+  group_by(MOY,year,Site) %>%
+  summarize(prcp.sum = sum(prcp..mm.day.),sd = sd(prcp..mm.day.)) %>%
+  group_by(MOY,Site) %>%
+  summarize(prcp.mm.month = mean(prcp.sum),sd = sd(prcp.sum))
+
+#Filter by Sites
+allwsprcpdatafilter<-filter(allwsprcp, Site == "MPR" | Site== "QS"| Site== "RI")
+
+#plot prcp and WOY
+p<-ggplot(data = allwsprcp, aes(x = MOY, y =prcp.mm.month, group=Site)) +
+  geom_errorbar(aes(ymin=prcp.mm.month-sd, ymax=prcp.mm.month+sd, width=.1, color=Site))+
+  geom_point(aes(color = Site, shape = Site), size= 2)+
+  geom_line(aes(color = Site))+
+  scale_y_continuous(expand = c(0,0)) +
+  scale_x_continuous(expand = c(0,0))+
+  theme_bw()  +
+  labs(x="Month of the year", y= "precipitation(mm/month)" , title = "All Watersheds Precipitation from 1983 to 2021")
+
+p+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
